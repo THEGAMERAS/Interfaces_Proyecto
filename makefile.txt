@@ -1,0 +1,14 @@
+CC = gcc
+CFLAGS = -Wall -Werror
+OUTPUT = P3.out
+DEBUG = -g
+SOURCE = P3.c
+all:
+        $(CC) $(SOURCE) $(CFLAGS) -o $(OUTPUT)
+debug:
+        $(CC) $(SOURCE) $(CFLAGS) $(DEBUG) -o $(OUTPUT)
+clean:
+        rm -f $(OUTPUT)
+fresh:
+        make clean
+        make all
