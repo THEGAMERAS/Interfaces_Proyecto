@@ -1,0 +1,304 @@
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/i2c-dev.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+/*********CONSTANT VALUES*********/
+#define Edit_Mode 								0x40
+#define SSD1306_COMMAND   					 	0x00
+#define SSD1306_DISPLAY_OFF 				 	0xAE
+#define SSD1306_SET_MULTIPLEX_RATIO          	0xA8
+#define SSD1306_SET_DISPLAY_OFFSET 			 	0xD3
+#define SSD1306_DATA_CONTINUE 				 	0x40
+#define SSD1306_SET_SEGMENT_REMAP_INV 		 	0xA1
+#define SSD1306_COM_SCAN_DIR_DEC 			 	0xC8
+#define SSD1306_SET_COM_PINS 				 	0xDA
+#define SSD1306_SET_CONTRAST_CONTROL 		 	0x81
+#define SSD1306_DISPLAY_ALL_ON_RESUME 		 	0xA4
+#define SSD1306_NORMAL_DISPLAY 				 	0xA6
+#define SSD1306_SET_DISPLAY_CLOCK_DIV_RATIO  	0xD5
+#define SSD1306_CHARGE_PUMP 				 	0x8D
+#define SSD1306_CHARGE_PUMP_ON 					0x14
+#define SSD1306_ACTIVATE_SCROLL					0x2F
+#define SSD1306_SET_PRECHARGE_PERIOD			0xD9
+#define SSD1306_SET_VCOM_DESELECT				0xDB
+#define SSD1306_SET_COLUMN_ADDR					0x21
+#define SSD1306_WIDTH							127
+#define SSD1306_SET_PAGE_ADDR					0x22
+#define SSD1306_HEIGHT							7
+#define SSD1306_MEMORY_ADDR_MODE				0x20
+#define SSD1306_DISPLAY_ON						0xAF
+#define SSD1306_SETLOWCOLUMN       				0x00
+#define SSD1306_SETHIGHCOLUMN      				0x10
+#define SSD1306_MEMORYMODE        				0x20
+#define SSD1306_COLUMNADDR        				0x21
+#define SSD1306_PAGEADDR           				0x22
+#define SSD1306_SETSTARTLINE       				0x40
+#define SSD1306_DEFAULT_ADDRESS    				0x78
+#define SSD1306_SETCONTRAST        				0x81
+#define SSD1306_CHARGEPUMP         				0x8D
+#define SSD1306_SEGREMAP           				0xA0
+#define SSD1306_DISPLAYALLON_RESUME   			0xA4
+#define SSD1306_DISPLAYALLON       				0xA5
+#define SSD1306_NORMALDISPLAY      				0xA6
+#define SSD1306_INVERTDISPLAY      				0xA7
+#define SSD1306_SETMULTIPLEX       				0xA8
+#define SSD1306_DISPLAYOFF         				0xAE
+#define SSD1306_DISPLAYON          				0xAF
+#define SSD1306_SETPAGE            				0xB0
+#define SSD1306_COMSCANINC         				0xC0
+#define SSD1306_COMSCANDEC         				0xC8
+#define SSD1306_SETDISPLAYOFFSET   				0xD3
+#define SSD1306_SETDISPLAYCLOCKDIV   			0xD5
+#define SSD1306_SETPRECHARGE       				0xD9
+#define SSD1306_SETCOMPINS         				0xDA
+#define SSD1306_SETVCOMDETECT      				0xDB
+#define	SSD1306_SWITCHCAPVCC       				0x02
+#define SSD1306_NOP                				0xE3
+#define HORIZONTAL_ADDRESSING_MODE    			0x00
+#define VERTICAL_ADDRESSING_MODE      			0x01
+#define PAGE_ADDRESSING_MODE          			0x02
+#define	OLED_DISPLAYOFF             			0xAE
+#define OLED_SETCONTRAST            			0x81
+#define OLED_DISPLAYNORMAL          			0xA6
+#define	OLED_DEACTIVATE_SCROLL      			0x2E
+#define	OLED_SETMEMORYMODE          			0x20
+#define OLED_SETMEMORYMODE_PAGE     			0x02
+#define	OLED_SEGREMAPINV            			0xA1
+#define OLED_SETMULTIPLEX           			0xA8
+#define OLED_COMSCANDEC             			xC0
+#define OLED_SETDISPLAYOFFSET       			0xD3
+#define OLED_SETCOMPINS             			0xDA
+#define OLED_SETDISPLAYCLOCKDIV     			0xD5
+#define OLED_SETPRECHARGE           			0xD9
+#define OLED_SETVCOMDESELECT        			0xDB
+#define OLED_CHARGEPUMP             			0x8D
+#define OLED_CHARGEPUMP_ON          			0x14
+#define	OLED_DISPLAYALLONRESUME     			0xA4
+#define OLED_DISPLAYON       					0xAF
+
+
+#define ASCII_CONV_VALUE 						48
+#define Decimal									10
+#define Edit_Mode 								0x40
+
+
+
+
+
+void writeI2C(unsigned char* data, int bytes);
+void SSD_vfnClear (void);
+void SSD_StartOLED (void);
+void SSD_vfnWrite (uint8_t caracter);
+void vfn_Loop(void);
+
+void SSD_StartOLED (void){
+	unsigned char ssd1306InitCmds[]={
+				SSD1306_COMMAND,					//0x00
+				//Fundamental Commands
+		        SSD1306_DISPLAY_OFF,				//0xAE
+				SSD1306_SET_MULTIPLEX_RATIO,        //0xA8
+		        0x3F,
+				SSD1306_SET_DISPLAY_OFFSET,			//0xD3
+		        0x00,
+				SSD1306_DATA_CONTINUE,				//0x40
+				SSD1306_SET_SEGMENT_REMAP_INV,		//0xA1
+				SSD1306_COM_SCAN_DIR_DEC,			//0xC8
+				SSD1306_SET_COM_PINS,				//0xDA
+		        0x12,
+		        SSD1306_SET_CONTRAST_CONTROL,		//0x81
+		        0x7F,
+				SSD1306_DISPLAY_ALL_ON_RESUME,		//0xA4
+				SSD1306_NORMAL_DISPLAY,				//0xA6
+				//Timing and Driving Settings
+				SSD1306_SET_DISPLAY_CLOCK_DIV_RATIO,//0xD5
+				0x80,
+				//Charge pump regulator
+				SSD1306_CHARGE_PUMP,				//0x8D
+				SSD1306_CHARGE_PUMP_ON,				//0x14
+				//Scrolling Commands
+				OLED_DEACTIVATE_SCROLL,
+		        SSD1306_SET_PRECHARGE_PERIOD,
+		        0x22,
+				SSD1306_SET_VCOM_DESELECT,
+		        0x20,
+				SSD1306_SET_COLUMN_ADDR,
+				0x00,
+				SSD1306_WIDTH,
+				SSD1306_SET_PAGE_ADDR,
+				0x00,
+				SSD1306_HEIGHT,
+				//Addressing Commands
+				SSD1306_MEMORY_ADDR_MODE,
+				0x00,
+				SSD1306_DISPLAY_ON
+		    };
+	writeI2C(ssd1306InitCmds, sizeof(ssd1306InitCmds));
+}
+
+void writeI2C(unsigned char* data, int bytes){
+	
+	int i2cAddress = 0x3C;
+	int i2cHandle;
+	
+	char *deviceName = (char*)"/dev/i2c-1";
+	
+	if ((i2cHandle = open(deviceName,O_RDWR)) < 0) {
+		printf("error opening I2C\n");
+	}
+	
+	if (ioctl(i2cHandle,I2C_SLAVE,i2cAddress) < 0) {
+	printf("Error at ioctl\n");
+	} else {
+	write(i2cHandle,data,bytes);
+	}
+	
+	close(*deviceName);
+
+}
+
+int main() {
+
+		
+	SSD_StartOLED();
+	SSD_vfnClear();
+	
+	vfn_Loop();
+}
+
+void vfn_Loop(void){
+	
+	uint64_t u64Counter = 0;
+	
+		while(1){
+		
+		if(u64Counter == 20000000){
+			SSD_vfnClear();
+			SSD_vfnWrite('B');
+			SSD_vfnWrite('A');
+			SSD_vfnWrite('T');
+			SSD_vfnWrite('H');
+		}
+		if(u64Counter == 40000000){
+			SSD_vfnClear();
+			SSD_vfnWrite('F');
+			SSD_vfnWrite('O');
+			SSD_vfnWrite('O');
+			SSD_vfnWrite('D');
+		}
+		if(u64Counter == 60000000){
+			SSD_vfnClear();
+			SSD_vfnWrite('W');
+			SSD_vfnWrite('I');
+			SSD_vfnWrite('P');
+			SSD_vfnWrite('E');
+			u64Counter = 0;
+		}
+		
+		u64Counter++;
+		
+	}
+
+	
+}
+
+void SSD_vfnClear (void)
+{
+	int i;
+	unsigned char blank[2] = {0x40,0x00};
+	
+	
+	for(i=0; i<1004; i++) // 1000
+	{
+		writeI2C(blank,2);
+	}
+	i = 0;
+}
+
+void SSD_vfnWrite (uint8_t caracter)
+{
+	
+	caracter = caracter - 32;
+	
+	unsigned char FontRequest[6] = {0};
+	unsigned char OledFontTable[][6] = {
+	{2,0x00,0x00}, // SPACE
+	{1,0x5E}, // !
+	{3,0x02,0x00,0x02}, // "
+	{5,0x24,0x7E,0x24,0x7E,0x24}, // #
+	{5,0x44,0x4A,0x7E,0x52,0x22}, // $
+	{5,0x22,0x10,0x08,0x04,0x42}, // %
+	{5,0x34,0x4A,0x54,0x20,0x40}, // &
+	{1,0x02}, // '
+	{3,0x18,0x24,0x42}, // (
+	{3,0x42,0x24,0x18}, // )
+	{5,0x54,0x38,0x7C,0x38,0x54}, // *
+	{5,0x08,0x08,0x7E,0x08,0x08}, // +
+	{2,0x40,0x20}, // ,
+	{3,0x08,0x08,0x08}, // -
+	{1,0x40}, // .
+	{4,0x60,0x10,0x08,0x06}, // /
+	{4,0x7E,0x52,0x4A,0x7E}, // 0
+	{3,0x44,0x7E,0x40}, // 1
+	{4,0x64,0x52,0x4A,0x44}, // 2
+	{3,0x42,0x4A,0x34}, // 3
+	{4,0x18,0x14,0x7E,0x10}, // 4
+	{3,0x4E,0x4A,0x32}, // 5
+	{4,0x3C,0x4A,0x4A,0x32}, // 6
+	{3,0x6E,0x1A,0x06}, // 7
+	{4,0x34,0x4A,0x4A,0x34}, // 8
+	{4,0x4C,0x52,0x56,0x3C}, // 9
+	{1,0x14}, // :
+	{2,0x20,0x14}, // ;
+	{3,0x10,0x28,0x44}, // <
+	{3,0x28,0x28,0x28}, // =
+	{3,0x44,0x28,0x10}, // >
+	{3,0x02,0x5A,0x04}, // ?
+	{5,0x7E,0x42,0x5A,0x52,0x5E}, // @
+	{4,0x7E,0x12,0x12,0x7e}, //A
+	{4,0x7E,0x4a,0x4a,0x34}, //B
+	{4,0x7e,0x42,0x42,0x42}, //C
+	{4,0x7E,0x42,0x42,0x3C}, //D
+	{4,0x7E,0x52,0x52,0x42}, //E
+	{4,0x7E,0x12,0x12,0x02}, //F
+	{4,0x7E,0x42,0x42,0x72}, //G
+	{4,0x7E,0x10,0x10,0x7E}, //H
+	{4,0x42,0x7E,0x42,0x00}, //I
+	{4,0x62,0x42,0x7E,0x02}, //J
+	{4,0x7E,0x18,0x24,0x42}, //K
+	{4,0x7E,0x40,0x40,0x40}, //L
+	{4,0x7E,0x04,0x04,0x7E}, //M
+	{4,0x7E,0x0C,0x30,0x7E}, //N
+	{4,0x7E,0x42,0x42,0x7E}, //O
+	{4,0x7E,0x12,0x12,0x1E}, //P
+	{4,0x7E,0x42,0x4A,0x7E}, //Q
+	{4,0x7E,0x12,0x32,0x6E}, //R
+	{4,0x4E,0x4A,0x4A,0x72}, //S
+	{4,0x02,0x7E,0x02,0x02}, //T
+	{4,0x7E,0x40,0x40,0x7E}, //U
+	{4,0x3E,0x60,0x60,0x3E}, //V
+	{4,0x7E,0x20,0x20,0x7E}, //W
+	{4,0x66,0x3C,0x3C,0x66}, //X
+	{4,0x1E,0x10,0x10,0x7E}, //Y
+	{4,0x62,0x52,0x4C,0x46}, //Z
+	{2,0x7E,0x42},  // [
+	{4,0x06,0x08,0x10,0x60}, // BACKSPACE
+	{2,0x42,0x7E}, // ]
+	{3,0x04,0x02,0x04}, // ^
+	{3,0x40,0x40,0x40}, // _
+	{2,0x02,0x04}, // `
+	{3,0x7E,0x7E,0x7E} // UNKNOWN OR NOT SUPPORTED
+	
+};
+	
+	int i;
+	FontRequest[0] = 0x40;
+	for (i = 1; i <5; i++){
+	FontRequest[i] = OledFontTable[caracter][i];
+	}
+	FontRequest[5] = 0x00;
+	writeI2C(FontRequest,6);
+	
+}
